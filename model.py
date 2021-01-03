@@ -62,14 +62,15 @@ class Attention(tf.keras.Model):
         return context_vector
 
 class Decoder(tf.keras.Model):
-    def __init__(self, vocab_size, embed_dims, enc_units, batch_size, dropout):
+    def __init__(self, vocab_size, embed_dims, dec_units, method, batch_size, dropout):
         super(Decoder, self).__init__()
         
         self.batch_size = batch_size
-
+        self.dec_units = dec_units
+        self.embedding = tf.keras.layers.Embedding(vocab_size, embed_dims)
 
         self.lstm_1 = tf.keras.layers.LSTM(
-            self.enc_units,
+            self.dec_units,
             return_sequences = True,
             return_state = True,
             dropout = dropout,
@@ -77,10 +78,24 @@ class Decoder(tf.keras.Model):
         )
 
         self.lstm_2 = tf.keras.layers.LSTM(
-            self.enc_units,
+            self.dec_units,
             return_sequences = True,
             return_state = True,
             dropout = dropout,
             recurrent_initializer = 'glorot_uniform'
         )
     
+        self.attention = Attention(dec_units, method)
+
+        self.W_c = tf.keras.layers.Dense(embed_dims, activation='tanh')
+
+        self.W_s = tf.keras.layers.Dense(vocab_size)
+    
+    def call(self, x, pre_state, enc_output, pre_h_t):
+        x = self.embedding(x)
+        x = tf.concat([x, pre_h_t], axis=-1)
+        x, h_state_1, c_state_1 = self.lstm_1(x, initial_state=pre_state[0])
+        dec_output, h_state_2, c_state_2 = self.lstm_2(x, initial_state=pre_state[1])
+        state = [[h_state_1, c_state_1], [h_state_2, c_state_2]]
+        context_vector = self.attention(dec_output, enc_output)
+        
