@@ -98,4 +98,9 @@ class Decoder(tf.keras.Model):
         dec_output, h_state_2, c_state_2 = self.lstm_2(x, initial_state=pre_state[1])
         state = [[h_state_1, c_state_1], [h_state_2, c_state_2]]
         context_vector = self.attention(dec_output, enc_output)
+        h_t = self.W_c(tf.concat([tf.expand_dims(context_vector, 1), dec_output], axis=-1))
+
+        y_t = tf.squeeze(self.W_s(h_t), axis = 1)
+
+        return y_t, state, h_t
         
