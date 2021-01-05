@@ -15,7 +15,7 @@ from tqdm import tqdm
 def create_dataset(path, limit_size=None):
     lines = io.open(path, encoding='UTF-8').read().strip().split('\n')
 
-    lines = ['<s> ' + line + ' </s>' for line in tqdm(lines[:limit_size])]
+    lines = ['<s> ' + line + ' </s>' for line in lines[:limit_size]]
 
     return lines
 
@@ -55,3 +55,11 @@ def load_dataset(path, lang, max_len=100, limit_size=None):
   tensor, tokenizer = tokenize(text,vocab,max_len)
 
   return tensor, tokenizer
+
+def loss_function(real,pred,object):
+  mask = tf.math.logical_not(tf.math.equal(real,0))
+  loss = object(real,pred)
+  mask = tf.cast(mask, dtype=loss.dtype)
+  loss *= mask
+
+  return tf.reduce_mean(loss)
