@@ -12,12 +12,23 @@ import io
 import time
 from tqdm import tqdm
 
-def create_dataset(path, limit_size=None):
+def create_dataset(path, limit_size=None, reverse=False):
     lines = io.open(path, encoding='UTF-8').read().strip().split('\n')
+    
+    dataset = []
+    for line in tqdm(lines[:limit_size]):
+      sentence = line
+      if reverse:
+        line_list = line.split()
+        line_list.reverse()
+        sentence = ' '.join(line_list)
+      
+      processed_sentence = '<s> ' + sentence + ' </s>'
+      dataset.append(processed_sentence)
 
-    lines = ['<s> ' + line + ' </s>' for line in lines[:limit_size]]
+    # lines = ['<s> ' + line + ' </s>' for line in lines[:limit_size]]
 
-    return lines
+    return dataset
 
 def tokenize(dataset, vocab, max_len=100):
   tokenizer = tf.keras.preprocessing.text.Tokenizer(
@@ -45,11 +56,11 @@ def load_vocab(path, lang):
   
   return vocab
 
-def load_dataset(path, lang, max_len=100, limit_size=None):
+def load_dataset(path, lang, max_len=100, limit_size=None, reverse=False):
   text_path = os.path.join(path,'train.{}'.format(lang))
   vocab_path = os.path.join(path, 'vocab.{}'.format(lang))
 
-  text = create_dataset(text_path,limit_size)
+  text = create_dataset(text_path,limit_size,reverse)
   vocab = load_vocab(path,lang)
 
   tensor, tokenizer = tokenize(text,vocab,max_len)
