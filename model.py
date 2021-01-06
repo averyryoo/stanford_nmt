@@ -48,7 +48,7 @@ class Attention(tf.keras.Model):
     def call(self, dec_h_t, enc_h_s):
 
         if self.method == 'concat':
-            score = self.V(tf.nn.tanh(self.W_a(dec_h_t + enc_h_s)))
+            score = self.V(tf.nn.tanh(self.W(dec_h_t + enc_h_s)))
         elif self.method == 'general':
             score = tf.matmul(self.W(enc_h_s), dec_h_t, transpose_b=True)
         elif self.method == 'dot':

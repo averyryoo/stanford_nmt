@@ -21,7 +21,7 @@ def parse_args():
     parser.add_argument('--test', default=False, action='store_true')
 
     parser.add_argument('--data_dir', type=str, default='data/train')
-    parser.add_argument('--ckpt_file', type=str, default='checkpoints/ckpt_1.h5')
+    parser.add_argument('--ckpt_dir', type=str, default='checkpoints')
     parser.add_argument('--out', type=str, default='weights')
     parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--input_lang', type=str, default='en')
@@ -45,7 +45,8 @@ def data_gen():
         args.data_dir,
         args.input_lang,
         args.max_len,
-        args.limit_size
+        args.limit_size,
+        reverse=True
         )
     
     print('Loading target dataset')
@@ -125,6 +126,7 @@ def train(tensor_input, tensor_target, tokenizer_input, tokenizer_target):
         return batch_loss
     
     checkpoint_prefix = os.path.join('checkpoints',args.out)
+
     checkpoint = tf.train.Checkpoint(
         optimizer=optimizer,
         encoder=encoder,
@@ -154,9 +156,7 @@ def train(tensor_input, tensor_target, tokenizer_input, tokenizer_target):
                 )
                 )
         
-
-        
-
+        save_path = checkpoint.save(file_prefix=checkpoint_prefix)
 
 if __name__ == '__main__':
     args = parse_args()
