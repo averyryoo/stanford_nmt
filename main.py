@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 
 import argparse
 import time
@@ -13,12 +14,13 @@ import tensorflow as tf
 
 from utils import *
 from model import Encoder, Decoder, Attention
+from bleu import BLEU
 
 def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--train', default=False, action='store_true')
-    parser.add_argument('--test', default=False, action='store_true')
+    parser.add_argument('--translate', default=False, action='store_true')
 
     parser.add_argument('--data_dir', type=str, default='data/train')
     parser.add_argument('--ckpt_dir', type=str, default='checkpoints')
@@ -158,8 +160,28 @@ def train(tensor_input, tensor_target, tokenizer_input, tokenizer_target):
         
         save_path = checkpoint.save(file_prefix=checkpoint_prefix)
 
+def translate(input_):
+    x = re.sub(r"([?.!,¿])", r" \1 ", input_)
+    x = re.sub(r'[" "]+', " ", x)
+    x = re.sub(r"[^a-zA-Z?.!,¿]+", " ", x)
+    x = x.strip()
+    
+    x_list = x.split()
+    x_list.reverse()
+    output = ' '.join(x_list)
+
+    output = '<s> ' + output + '</s>'
+
+    return output
+
 if __name__ == '__main__':
     args = parse_args()
     tensor_input, tensor_target, tokenizer_input, tokenizer_target = data_gen()
     if args.train:
         train(tensor_input, tensor_target, tokenizer_input, tokenizer_target)
+        
+    if args.translate:
+        input_sentence = input('Input sentence for translation (to Vietnamese): ')
+        output_sentence = translate(input_sentence)
+
+
