@@ -14,7 +14,7 @@ import tensorflow as tf
 
 from utils import *
 from model import Encoder, Decoder, Attention
-from bleu import BLEU
+from bleu import compute_BLEU
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -160,19 +160,30 @@ def train(tensor_input, tensor_target, tokenizer_input, tokenizer_target):
         
         save_path = checkpoint.save(file_prefix=checkpoint_prefix)
 
-def translate(input_):
+def translate(input_, lang_input, lang_target):
     x = re.sub(r"([?.!,¿])", r" \1 ", input_)
     x = re.sub(r'[" "]+', " ", x)
     x = re.sub(r"[^a-zA-Z?.!,¿]+", " ", x)
-    x = x.strip()
+    processed = x.strip()
     
-    x_list = x.split()
-    x_list.reverse()
-    output = ' '.join(x_list)
+    if args.reverse:
+        x_list = processed.split()
+        x_list.reverse()
+        processed = ' '.join(x_list)
 
-    output = '<s> ' + output + '</s>'
+    processed = '<s> ' + processed + '</s>'
 
-    return output
+    inputs = [lang_input.word_index[i] for i in sentence.split(' ')]
+    inputs = tf.keras.preprocessing.sequence.pad_sequences([inputs],
+                                                            maxlen=args.max_len,
+                                                            padding='post')
+
+    inputs = tf.convert_to_tensor(inputs)
+
+    result = ''
+
+    hidden = [tf.zeros((1, units))]
+    enc_out, enc_hidden = encoder
 
 if __name__ == '__main__':
     args = parse_args()
@@ -182,6 +193,8 @@ if __name__ == '__main__':
         
     if args.translate:
         input_sentence = input('Input sentence for translation (to Vietnamese): ')
-        output_sentence = translate(input_sentence)
+        output_sentence = translate(input_sentence, tokenizer_input, tokenizer_target)
+        print('Output: ' + output_sentence)
+        print('')
 
 
