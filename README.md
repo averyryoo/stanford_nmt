@@ -3,6 +3,14 @@ An implementation of a Stanford project on Neural Machine Translation
 
 link: https://nlp.stanford.edu/pubs/luong-manning-iwslt15.pdf
 
+## Set-up Dataset
+
+```
+bash data_setup
+```
+
+This will create a folder where train and test datasets are stored
+
 ## Arguments
 
 ```
