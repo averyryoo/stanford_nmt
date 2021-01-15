@@ -75,9 +75,9 @@ def load_dataset(path, lang, max_len=100, limit_size=None, reverse=False):
 
   return tensor, tokenizer
 
-def loss_function(real,pred,object):
+def loss_function(real,pred,loss_object):
   mask = tf.math.logical_not(tf.math.equal(real,0))
-  loss = object(real,pred)
+  loss = loss_object(real,pred)
   mask = tf.cast(mask, dtype=loss.dtype)
   loss *= mask
 
