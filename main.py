@@ -64,20 +64,26 @@ def data_gen():
 
 def train(tensor_input, tensor_target, tokenizer_input, tokenizer_target):
 
+    # split dataset into training and validation
     train_input, val_input, train_target, val_target = train_test_split(
         tensor_input,
         tensor_target,
         test_size = args.dev_split
     )
 
+    # initialize batch size and consequent steps_per_epoch
     batch_size = args.batch_size
     steps_per_epoch = len(train_input) // batch_size
 
+    # create tensorflow dataset by generating slices from the 
+    # generated dataset
     dataset = tf.data.Dataset.from_tensor_slices((train_input,train_target)).shuffle(len(train_input))
     dataset = dataset.batch(args.batch_size)
 
+    # initialize SGD as the optimizer
     optimizer = tf.optimizers.SGD(args.learn_rate)
 
+    # instantiate Encoder
     encoder = Encoder(
         len(tokenizer_input.word_index) + 1,
         args.embed_dims,
@@ -86,6 +92,7 @@ def train(tensor_input, tensor_target, tokenizer_input, tokenizer_target):
         args.dropout
         )
 
+    # instantiate Decoder
     decoder = Decoder(
         len(tokenizer_target.word_index) + 1,
         args.embed_dims,
@@ -95,6 +102,7 @@ def train(tensor_input, tensor_target, tokenizer_input, tokenizer_target):
         args.dropout
         )
     
+    # use Sparse Categorical Crossentropy as loss object
     loss_object = tf.losses.SparseCategoricalCrossentropy(from_logits=True, reduction='none')
 
     @tf.function
@@ -102,6 +110,7 @@ def train(tensor_input, tensor_target, tokenizer_input, tokenizer_target):
         loss = 0
 
         with tf.GradientTape() as tape:
+            #pass input into the encoder
             enc_output, enc_hidden = encoder(input,enc_hidden)
 
             dec_hidden = enc_hidden
@@ -114,12 +123,15 @@ def train(tensor_input, tensor_target, tokenizer_input, tokenizer_target):
             h_t = tf.zeros((args.batch_size, 1, args.embed_dims))
 
             for i in range(1, target.shape[1]):
+                # passing enc_output into the decoder
                 pred, dec_hidden, h_t = decoder(dec_input, dec_hidden, enc_output, h_t)
 
                 loss += loss_function(target[:,i], pred, loss_object)
 
+                # teacher forcing - passing the next target word into the decoder
                 dec_input = tf.expand_dims(target[:,i],1)                                                                    
 
+        # calculate the gradients and backpropogate via the optimizer
         batch_loss = (loss / int(target.shape[1]))
         variables = encoder.trainable_variables + decoder.trainable_variables
         gradients = tape.gradient(loss, variables)
@@ -127,6 +139,7 @@ def train(tensor_input, tensor_target, tokenizer_input, tokenizer_target):
 
         return batch_loss
     
+    # Initialize checkpoint saving
     checkpoint_prefix = os.path.join('checkpoints',args.out)
 
     checkpoint = tf.train.Checkpoint(
@@ -135,19 +148,22 @@ def train(tensor_input, tensor_target, tokenizer_input, tokenizer_target):
         decoder=decoder
         )
 
+    # Run training for specified number of epochs
     for epoch in range(args.epochs):
-        start_time = time.time()
         total_loss = 0
 
+        # Initialize initial tensors
         enc_hidden = encoder.initialize_hidden_state()
         enc_cell = encoder.initialize_cell_state()
         enc_state = [[enc_hidden, enc_cell], [enc_hidden, enc_cell]]
 
         print('Starting Epoch',epoch+1)
         for(batch, (input,target)) in enumerate(dataset.take(steps_per_epoch)):
+            # Run a train step for each batch in each epoch
             batch_loss = train_step(input, target, enc_state)
             total_loss += batch_loss
 
+            # Print training progress
             if batch % 10 == 0:
                 print('Epoch {}/{} Batch {}/{} Loss {:.4f}'.format(
                     epoch + 1,
@@ -160,34 +176,35 @@ def train(tensor_input, tensor_target, tokenizer_input, tokenizer_target):
         
         save_path = checkpoint.save(file_prefix=checkpoint_prefix)
 
-def translate(input_, lang_input, lang_target):
-    x = re.sub(r"([?.!,¿])", r" \1 ", input_)
-    x = re.sub(r'[" "]+', " ", x)
-    x = re.sub(r"[^a-zA-Z?.!,¿]+", " ", x)
-    processed = x.strip()
+# def translate(input_, lang_input, lang_target):
+#     x = re.sub(r"([?.!,¿])", r" \1 ", input_)
+#     x = re.sub(r'[" "]+', " ", x)
+#     x = re.sub(r"[^a-zA-Z?.!,¿]+", " ", x)
+#     processed = x.strip()
     
-    if args.reverse:
-        x_list = processed.split()
-        x_list.reverse()
-        processed = ' '.join(x_list)
+#     if args.reverse:
+#         x_list = processed.split()
+#         x_list.reverse()
+#         processed = ' '.join(x_list)
 
-    processed = '<s> ' + processed + '</s>'
+#     processed = '<s> ' + processed + '</s>'
 
-    inputs = [lang_input.word_index[i] for i in sentence.split(' ')]
-    inputs = tf.keras.preprocessing.sequence.pad_sequences([inputs],
-                                                            maxlen=args.max_len,
-                                                            padding='post')
+#     inputs = [lang_input.word_index[i] for i in sentence.split(' ')]
+#     inputs = tf.keras.preprocessing.sequence.pad_sequences([inputs],
+#                                                             maxlen=args.max_len,
+#                                                             padding='post')
 
-    inputs = tf.convert_to_tensor(inputs)
+#     inputs = tf.convert_to_tensor(inputs)
 
-    result = ''
+#     result = ''
 
-    hidden = [tf.zeros((1, units))]
-    enc_out, enc_hidden = encoder
+#     hidden = [tf.zeros((1, units))]
+#     enc_out, enc_hidden = encoder
 
 if __name__ == '__main__':
     args = parse_args()
     tensor_input, tensor_target, tokenizer_input, tokenizer_target = data_gen()
+    
     if args.train:
         train(tensor_input, tensor_target, tokenizer_input, tokenizer_target)
         
